@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Relative Strength Screener</title>
+<!-- Embedded Momentum Chart Favicon -->
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='23 6 13.5 15.5 8.5 10.5 1 18'></polyline><polyline points='17 6 23 6 23 12'></polyline></svg>" type="image/svg+xml">
 <style>
   :root { 
@@ -13,7 +14,7 @@
   }
   body { margin: 0; padding: 40px 24px; }
   main { 
-    max-width: 1500px; 
+    max-width: 1550px; 
     margin: auto; 
     background: #ffffff; 
     padding: 32px 40px; 
@@ -148,7 +149,7 @@
     <!-- Row 1: Search, Dropdown, and File Import -->
     <div class="toolbar-row">
       <div class="toolbar-left">
-        <input id="search" type="search" placeholder="Search symbol, company, or industry…">
+        <input id="search" type="search" placeholder="Search symbol, company, sector, or industry…">
         <select id="rsPeriod" aria-label="RS Calculation Period">
           <option value="return1m">1-Month Return</option>
           <option value="return3m" selected>3-Month Return</option>
@@ -176,6 +177,9 @@
     <div class="toolbar-row">
       <div class="toolbar-left">
         <label class="checkbox-label">
+          <input id="groupBySector" type="checkbox"> Group by Sector
+        </label>
+        <label class="checkbox-label">
           <input id="groupByIndustry" type="checkbox"> Group by Industry
         </label>
         <label class="checkbox-label">
@@ -199,6 +203,7 @@
       <thead><tr>
         <th data-key="symbol">Symbol ↕</th>
         <th data-key="name">Company ↕</th>
+        <th data-key="sector">Sector ↕</th>
         <th data-key="industry">Industry ↕</th>
         <th data-key="marketCap" style="text-align:right">Market Cap ↕</th>
         <th data-key="rs" style="text-align:right">RS Rating ↕</th>
@@ -209,18 +214,18 @@
         <th data-key="return2y" style="text-align:right">2Y Return ↕</th>
         <th data-key="return3y" style="text-align:right">3Y Return ↕</th>
       </tr></thead>
-      <tbody id="rows"><tr><td colspan="11" class="empty">Import your CSV to see ratings.</td></tr></tbody>
+      <tbody id="rows"><tr><td colspan="12" class="empty">Import your CSV to see ratings.</td></tr></tbody>
     </table>
   </div>
   <div class="note">
     <strong>RS Rating Calculation:</strong> Ranks are built dynamically based on your dropdown selection. Tied scores receive the same average rank. <br>
     <strong>Minervini Style Formula:</strong> <code>Score = (0.50 × 3M) + (0.25 × 6M) + (0.25 × 1Y)</code>. Missing older periods are treated as 0%.<br>
-    When grouping is enabled, industries sort by highest count of 80+ RS stocks (group average RS breaks ties). Data saves locally in your browser.
+    When grouping is enabled, groups sort by highest count of 80+ RS stocks (group average RS breaks ties). Data saves locally in your browser.
   </div>
 </main>
 <script>
 (() => {
-  const STORAGE_KEY = "dynamic-rs-rating-v7"; 
+  const STORAGE_KEY = "dynamic-rs-rating-v8"; 
   const $ = id => document.getElementById(id);
   let stocks = [];
   let currentDisplayedStocks = [];
@@ -295,6 +300,7 @@
     const data = rows.map(row => ({
       symbol: String(field(row, "companyId") || field(row, "Symbol") || field(row, "Ticker")).trim(),
       name: String(field(row, "Name") || field(row, "Company") || "").trim(),
+      sector: String(field(row, "Sector") || "Unassigned").trim() || "Unassigned",
       industry: String(field(row, "Industry") || "Unassigned").trim() || "Unassigned",
       marketCap: number(field(row, "Market Capitalization") || field(row, "Market Cap") || field(row, "Cap")),
       closePrice: number(field(row, "Close Price") || field(row, "Close")),
@@ -337,6 +343,7 @@
       let valA, valB;
       if (sortKey === "symbol") { valA = a.symbol; valB = b.symbol; return valA.localeCompare(valB) * sortDirection; }
       if (sortKey === "name") { valA = a.name; valB = b.name; return valA.localeCompare(valB) * sortDirection; }
+      if (sortKey === "sector") { valA = a.sector; valB = b.sector; return valA.localeCompare(valB) * sortDirection; }
       if (sortKey === "industry") { valA = a.industry; valB = b.industry; return valA.localeCompare(valB) * sortDirection; }
       if (sortKey === "marketCap") { valA = a.marketCap || 0; valB = b.marketCap || 0; }
       else if (sortKey === "return1m") { valA = a.return1m ?? -Infinity; valB = b.return1m ?? -Infinity; }
@@ -353,26 +360,22 @@
 
   function render() {
     const query = $("search").value.toLowerCase().trim();
-    const isGrouped = $("groupByIndustry").checked;
+    const isGroupedBySector = $("groupBySector").checked;
+    const isGroupedByIndustry = $("groupByIndustry").checked;
+    const isGrouped = isGroupedBySector || isGroupedByIndustry;
+    const groupByKey = isGroupedBySector ? "sector" : "industry";
     
     const minRSCheckbox = $("minRS80");
     const emaCheckbox = $("priceAbove200EMA");
     const toggleBtn = $("toggleGroups");
 
-    if (isGrouped) {
-      minRSCheckbox.checked = true;
-      minRSCheckbox.disabled = true;
-      toggleBtn.style.display = "inline-block";
-    } else {
-      minRSCheckbox.disabled = false;
-      toggleBtn.style.display = "none";
-    }
+    toggleBtn.style.display = isGrouped ? "inline-block" : "none";
 
     const filterMinRS = minRSCheckbox.checked;
     const filterEMA = emaCheckbox.checked;
 
     let filtered = stocks.filter(s => {
-      const matchesSearch = `${s.symbol} ${s.name} ${s.industry}`.toLowerCase().includes(query);
+      const matchesSearch = `${s.symbol} ${s.name} ${s.sector} ${s.industry}`.toLowerCase().includes(query);
       const matchesRS = !filterMinRS || s.rs >= 80;
       const matchesEMA = !filterEMA || (s.closePrice !== null && s.ema200 !== null && s.closePrice > s.ema200);
       return matchesSearch && matchesRS && matchesEMA;
@@ -381,7 +384,7 @@
     currentDisplayedStocks = filtered;
 
     if (!filtered.length) {
-      $("rows").innerHTML = '<tr><td colspan="11" class="empty">No matching stocks found.</td></tr>';
+      $("rows").innerHTML = '<tr><td colspan="12" class="empty">No matching stocks found.</td></tr>';
       $("status").textContent = `0 shown / ${stocks.length} total stocks · saved in this browser`;
       return;
     }
@@ -392,6 +395,7 @@
         <tr>
           <td>${escapeHTML(s.symbol)}</td>
           <td>${escapeHTML(s.name)}</td>
+          <td>${escapeHTML(s.sector)}</td>
           <td>${escapeHTML(s.industry)}</td>
           <td class="num">${s.marketCap !== null ? s.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
           <td class="num rating">${s.rs}</td>
@@ -405,11 +409,12 @@
     } else {
       const groupsMap = {};
       filtered.forEach(s => {
-        if (!groupsMap[s.industry]) groupsMap[s.industry] = [];
-        groupsMap[s.industry].push(s);
+        const key = s[groupByKey];
+        if (!groupsMap[key]) groupsMap[key] = [];
+        groupsMap[key].push(s);
       });
 
-      const groups = Object.entries(groupsMap).map(([industry, items]) => {
+      const groups = Object.entries(groupsMap).map(([groupName, items]) => {
         sortList(items, currentSortKey);
         const avgReturn1m = items.filter(s => s.return1m !== null).reduce((acc, curr, _, arr) => acc + curr.return1m / arr.length, 0);
         const avgReturn3m = items.filter(s => s.return3m !== null).reduce((acc, curr, _, arr) => acc + curr.return3m / arr.length, 0);
@@ -423,7 +428,7 @@
         const count80Plus = items.filter(s => s.rs >= 80).length;
 
         return { 
-          industry, 
+          groupName, 
           items, 
           return1m: items.some(s => s.return1m !== null) ? avgReturn1m : null, 
           return3m: items.some(s => s.return3m !== null) ? avgReturn3m : null, 
@@ -433,8 +438,7 @@
           return3y: items.some(s => s.return3y !== null) ? avgReturn3y : null, 
           rs: avgRS, 
           marketCap: totalMarketCap, 
-          count80Plus, 
-          name: industry 
+          count80Plus
         };
       });
 
@@ -443,20 +447,20 @@
         return b.rs - a.rs;
       });
 
-      currentGroupNames = groups.map(g => g.industry);
+      currentGroupNames = groups.map(g => g.groupName);
       const allExpanded = currentGroupNames.length > 0 && currentGroupNames.every(name => expandedGroups.has(name));
       toggleBtn.textContent = allExpanded ? "Collapse All" : "Expand All";
 
       let html = "";
       groups.forEach(group => {
-        const isExpanded = expandedGroups.has(group.industry);
+        const isExpanded = expandedGroups.has(group.groupName);
         const icon = isExpanded ? "▼" : "►";
 
         html += `
-          <tr class="group-header" data-industry="${escapeHTML(group.industry)}">
-            <td colspan="3">
+          <tr class="group-header" data-groupname="${escapeHTML(group.groupName)}">
+            <td colspan="4">
               <span class="toggle-icon">${icon}</span>
-              <strong>${escapeHTML(group.industry)}</strong>
+              <strong>${escapeHTML(group.groupName)}</strong>
               <span class="badge">${group.items.length} ${group.items.length === 1 ? 'stock' : 'stocks'}</span>
             </td>
             <td class="num"><strong>${group.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> <span class="avg-tag">(total)</span></td>
@@ -476,6 +480,7 @@
               <tr class="group-row">
                 <td>${escapeHTML(s.symbol)}</td>
                 <td>${escapeHTML(s.name)}</td>
+                <td>${escapeHTML(s.sector)}</td>
                 <td>${escapeHTML(s.industry)}</td>
                 <td class="num">${s.marketCap !== null ? s.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
                 <td class="num rating">${s.rs}</td>
@@ -523,9 +528,27 @@
   });
 
   $("search").addEventListener("input", render);
-  $("groupByIndustry").addEventListener("change", render);
   $("minRS80").addEventListener("change", render);
   $("priceAbove200EMA").addEventListener("change", render);
+
+  // Grouping Checkbox Logic (Mutually Exclusive)
+  $("groupBySector").addEventListener("change", (e) => {
+    if (e.target.checked) {
+      $("groupByIndustry").checked = false;
+      $("minRS80").checked = true; // Auto-apply 80+ RS when grouped
+    }
+    expandedGroups.clear();
+    render();
+  });
+  
+  $("groupByIndustry").addEventListener("change", (e) => {
+    if (e.target.checked) {
+      $("groupBySector").checked = false;
+      $("minRS80").checked = true; // Auto-apply 80+ RS when grouped
+    }
+    expandedGroups.clear();
+    render();
+  });
 
   $("toggleGroups").addEventListener("click", () => {
     const allExpanded = currentGroupNames.length > 0 && currentGroupNames.every(name => expandedGroups.has(name));
@@ -550,8 +573,8 @@
   $("rows").addEventListener("click", e => {
     const header = e.target.closest("tr.group-header");
     if (header) {
-      const industry = header.dataset.industry;
-      if (expandedGroups.has(industry)) { expandedGroups.delete(industry); } else { expandedGroups.add(industry); }
+      const groupName = header.dataset.groupname;
+      if (expandedGroups.has(groupName)) { expandedGroups.delete(groupName); } else { expandedGroups.add(groupName); }
       render();
     }
   });
