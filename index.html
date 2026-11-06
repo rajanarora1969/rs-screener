@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Relative Strength Screener</title>
+<style>
+  :root { 
+    font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+    color: #334155; 
+    background: #f8fafc; 
+  }
+  body { margin: 0; padding: 40px 24px; }
+  main { 
+    max-width: 1500px; 
+    margin: auto; 
+    background: #ffffff; 
+    padding: 32px 40px; 
+    border-radius: 16px; 
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05); 
+    border: 1px solid #e2e8f0;
+  }
+  h1 { margin: 0 0 6px; font-size: 26px; color: #0f172a; font-weight: 700; letter-spacing: -0.02em; }
+  .muted { color: #64748b; font-size: 14px; }
+  .muted a { color: #475569; text-decoration: none; border-bottom: 1px solid #cbd5e1; padding-bottom: 1px; transition: color 0.2s, border-color 0.2s; }
+  .muted a:hover { color: #0f172a; border-color: #0f172a; }
+  
+  /* 2-Row Toolbar Layout */
+  .toolbar { display: flex; flex-direction: column; gap: 16px; margin: 24px 0; }
+  .toolbar-row { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; align-items: center; }
+  .toolbar-left, .toolbar-right { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .toolbar-left { flex: 1; }
+  
+  input, select, button { 
+    font: inherit; 
+    padding: 10px 14px; 
+    border: 1px solid #cbd5e1; 
+    border-radius: 8px; 
+    background: white; 
+    color: #0f172a;
+    transition: all 0.2s ease;
+    outline: none;
+  }
+  input:focus, select:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15); }
+  input[type="search"] { flex: 1; min-width: 250px; max-width: 400px; }
+  
+  select { 
+    cursor: pointer; 
+    min-width: 190px; 
+    font-weight: 500; 
+    appearance: none; 
+    -webkit-appearance: none; 
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+  }
+  select:hover { background-color: #f8fafc; }
+  
+  /* Custom File Upload Button */
+  .file-upload-wrapper { position: relative; }
+  .file-upload-wrapper input[type="file"] { 
+    width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1; 
+  }
+  .file-upload-label { 
+    display: inline-flex; align-items: center; gap: 8px; 
+    cursor: pointer; background: #0f172a; color: white; border: 1px solid #0f172a; 
+    padding: 10px 16px; border-radius: 8px; font-weight: 500; transition: all 0.2s ease; 
+  }
+  .file-upload-label:hover { background: #1e293b; border-color: #1e293b; }
+  .file-upload-label svg { width: 16px; height: 16px; }
+
+  button { cursor: pointer; background: #0f172a; color: white; border-color: #0f172a; font-weight: 500; }
+  button:hover { background: #1e293b; border-color: #1e293b; }
+  button.secondary { color: #334155; background: white; border-color: #cbd5e1; }
+  button.secondary:hover { background: #f8fafc; border-color: #94a3b8; }
+  
+  /* Small Buttons Styling */
+  button.small-btn { padding: 6px 12px; font-size: 13px; border-radius: 6px; }
+
+  .checkbox-label { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; font-weight: 500; color: #475569; margin-right: 8px; }
+  .checkbox-label input { width: 16px; height: 16px; cursor: pointer; accent-color: #0f172a; }
+  .checkbox-label:hover { color: #0f172a; }
+  
+  .status { margin: 8px 0 16px; color: #64748b; font-size: 13px; font-weight: 500; }
+  
+  .table-wrap { overflow: auto; background: white; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+  table { width: 100%; border-collapse: collapse; white-space: nowrap; }
+  th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+  
+  th { 
+    background: #f8fafc; 
+    position: sticky; 
+    top: 0; 
+    cursor: pointer; 
+    user-select: none; 
+    color: #64748b; 
+    font-size: 12px; 
+    font-weight: 600; 
+    text-transform: uppercase; 
+    letter-spacing: 0.05em; 
+    border-bottom: 1px solid #e2e8f0;
+    transition: background 0.2s;
+  }
+  th:hover { background: #f1f5f9; color: #334155; }
+  
+  tbody tr { transition: background 0.15s; }
+  tbody tr:not(.empty):not(.group-header):hover { background-color: #f8fafc; }
+  tbody tr:last-child td { border-bottom: 0; }
+  
+  td { color: #334155; }
+  td:nth-child(1), td:nth-child(2) { font-weight: 500; color: #0f172a; } 
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  
+  .rating { font-weight: 700; color: #0284c7; }
+  .empty { text-align: center; padding: 48px; color: #64748b; font-size: 15px; }
+  
+  .note { font-size: 13px; margin-top: 16px; color: #64748b; line-height: 1.6; padding: 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+  .note code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; color: #0f172a; }
+
+  /* Grouping Styles */
+  tr.group-header { background: #f1f5f9; cursor: pointer; transition: background 0.2s; }
+  tr.group-header:hover { background: #e2e8f0; }
+  tr.group-header td { border-top: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; color: #0f172a; }
+  .toggle-icon { display: inline-block; width: 16px; text-align: center; margin-right: 6px; color: #64748b; font-size: 12px; }
+  tr.group-row td:first-child { padding-left: 32px; }
+  
+  .badge { 
+    font-size: 11px; 
+    background: #dbeafe; 
+    color: #1e40af; 
+    padding: 3px 10px; 
+    border-radius: 20px; 
+    font-weight: 600; 
+    margin-left: 8px; 
+    letter-spacing: 0.02em;
+  }
+  .avg-tag { font-size: 11px; color: #64748b; font-weight: normal; margin-left: 4px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Relative Strength Screener</h1>
+  <div class="muted">Import a CSV, dynamically rank stocks by your chosen metric, and keep the latest dataset in this browser. &bull; <a href="https://www.stockscans.in/scans/saved/9ebecd97d439fe2bf1884faf" target="_blank" rel="noopener noreferrer">Source Scan Link</a></div>
+  
+  <div class="toolbar">
+    <!-- Row 1: Search, Dropdown, and File Import -->
+    <div class="toolbar-row">
+      <div class="toolbar-left">
+        <input id="search" type="search" placeholder="Search symbol, company, or industry…">
+        <select id="rsPeriod" aria-label="RS Calculation Period">
+          <option value="return1m">1-Month Return</option>
+          <option value="return3m" selected>3-Month Return</option>
+          <option value="return6m">6-Month Return</option>
+          <option value="return1y">1-Year Return</option>
+          <option value="minervini">Mark Minervini Style</option>
+        </select>
+      </div>
+      <div class="toolbar-right">
+        <div class="file-upload-wrapper">
+          <input id="file" type="file" accept=".csv,text/csv" aria-label="Import CSV">
+          <label for="file" class="file-upload-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+            Import CSV
+          </label>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Row 2: Filters and Action Buttons -->
+    <div class="toolbar-row">
+      <div class="toolbar-left">
+        <label class="checkbox-label">
+          <input id="groupByIndustry" type="checkbox"> Group by Industry
+        </label>
+        <label class="checkbox-label">
+          <input id="minRS80" type="checkbox" checked> 80+ RS Only
+        </label>
+        <label class="checkbox-label">
+          <input id="priceAbove200EMA" type="checkbox" checked> Price &gt; 200 EMA
+        </label>
+      </div>
+      <div class="toolbar-right">
+        <button id="toggleGroups" class="secondary small-btn" style="display: none;">Expand All</button>
+        <button id="copySymbols" class="secondary small-btn">Copy symbols</button>
+        <button id="clear" class="secondary small-btn">Clear saved</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="status" class="status">Choose a CSV file to get started.</div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th data-key="symbol">Symbol ↕</th>
+        <th data-key="name">Company ↕</th>
+        <th data-key="industry">Industry ↕</th>
+        <th data-key="marketCap" style="text-align:right">Market Cap ↕</th>
+        <th data-key="rs" style="text-align:right">RS Rating ↕</th>
+        <th data-key="return1m" style="text-align:right">1M Return ↕</th>
+        <th data-key="return3m" style="text-align:right">3M Return ↕</th>
+        <th data-key="return6m" style="text-align:right">6M Return ↕</th>
+        <th data-key="return1y" style="text-align:right">1Y Return ↕</th>
+        <th data-key="return2y" style="text-align:right">2Y Return ↕</th>
+        <th data-key="return3y" style="text-align:right">3Y Return ↕</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="11" class="empty">Import your CSV to see ratings.</td></tr></tbody>
+    </table>
+  </div>
+  <div class="note">
+    <strong>RS Rating Calculation:</strong> Ranks are built dynamically based on your dropdown selection. Tied scores receive the same average rank. <br>
+    <strong>Minervini Style Formula:</strong> <code>Score = (0.50 × 3M) + (0.25 × 6M) + (0.25 × 1Y)</code>. Missing older periods are treated as 0%.<br>
+    When grouping is enabled, industries sort by highest count of 80+ RS stocks (group average RS breaks ties). Data saves locally in your browser.
+  </div>
+</main>
+<script>
+(() => {
+  const STORAGE_KEY = "dynamic-rs-rating-v7"; 
+  const $ = id => document.getElementById(id);
+  let stocks = [];
+  let currentDisplayedStocks = [];
+  const expandedGroups = new Set();
+  let currentGroupNames = [];
+  
+  let currentSortKey = "rs";
+  let sortDirection = -1;
+
+  function parseCSV(text) {
+    const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(line => line.trim());
+    if (!lines.length) return [];
+    const parseLine = line => {
+      const cells = []; let cell = "", quoted = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && quoted && line[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') quoted = !quoted;
+        else if (c === "," && !quoted) { cells.push(cell.trim()); cell = ""; }
+        else cell += c;
+      }
+      cells.push(cell.trim());
+      return cells;
+    };
+    const headers = parseLine(lines[0]).map(h => h.replace(/^"|"$/g, "").trim());
+    return lines.slice(1).map(line => {
+      const values = parseLine(line);
+      return Object.fromEntries(headers.map((h, i) => [h, values[i] ?? ""]));
+    });
+  }
+
+  function field(row, name) {
+    const key = Object.keys(row).find(k => k.trim().toLowerCase() === name.toLowerCase());
+    return key ? row[key] : "";
+  }
+  
+  function number(value) {
+    const n = Number(String(value ?? "").replace(/[,₹%]/g, "").trim());
+    return Number.isFinite(n) && String(value).trim() !== "" ? n : null;
+  }
+
+  function calculateRS(data, mode) {
+    data.forEach(s => {
+      if (mode === 'minervini') {
+        const r3 = s.return3m || 0;
+        const r6 = s.return6m || 0;
+        const r1 = s.return1y || 0;
+        s._sortValue = (0.50 * r3) + (0.25 * r6) + (0.25 * r1);
+      } else {
+        s._sortValue = s[mode] !== null ? s[mode] : -Infinity;
+      }
+    });
+
+    const validData = data.filter(s => s._sortValue !== -Infinity);
+    const invalidData = data.filter(s => s._sortValue === -Infinity);
+
+    validData.sort((a, b) => a._sortValue - b._sortValue);
+    const n = validData.length;
+    
+    validData.forEach((stock, i) => {
+      let first = i, last = i;
+      while (first > 0 && validData[first - 1]._sortValue === stock._sortValue) first--;
+      while (last + 1 < n && validData[last + 1]._sortValue === stock._sortValue) last++;
+      const averageRank = (first + last) / 2;
+      stock.rs = n <= 1 ? 100 : Math.round(averageRank / (n - 1) * 100);
+    });
+
+    invalidData.forEach(stock => stock.rs = 0);
+  }
+
+  function normalize(rows) {
+    const data = rows.map(row => ({
+      symbol: String(field(row, "companyId") || field(row, "Symbol") || field(row, "Ticker")).trim(),
+      name: String(field(row, "Name") || field(row, "Company") || "").trim(),
+      industry: String(field(row, "Industry") || "Unassigned").trim() || "Unassigned",
+      marketCap: number(field(row, "Market Capitalization") || field(row, "Market Cap") || field(row, "Cap")),
+      closePrice: number(field(row, "Close Price") || field(row, "Close")),
+      ema200: number(field(row, "EMA 200D") || field(row, "200 EMA") || field(row, "EMA 200")),
+      return1m: number(field(row, "Returns 1M") || field(row, "1M Return") || field(row, "Return 1M")),
+      return3m: number(field(row, "Returns 3M") || field(row, "3M Return") || field(row, "Return 3M")),
+      return6m: number(field(row, "Returns 6M") || field(row, "6M Return") || field(row, "Return 6M")),
+      return1y: number(field(row, "Returns 1Y") || field(row, "1Y Return") || field(row, "Return 1Y")),
+      return2y: number(field(row, "Returns 2Y") || field(row, "2Y Return") || field(row, "Return 2Y")),
+      return3y: number(field(row, "Returns 3Y") || field(row, "3Y Return") || field(row, "Return 3Y"))
+    })).filter(s => s.symbol);
+
+    calculateRS(data, $("rsPeriod").value);
+    return data;
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stocks));
+      $("status").textContent = `${stocks.length} stocks loaded · saved in this browser`;
+    } catch (e) {
+      $("status").textContent = "Could not save data. Browser storage may be full or disabled.";
+    }
+  }
+  
+  function load() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) { 
+        stocks = JSON.parse(saved); 
+        calculateRS(stocks, $("rsPeriod").value);
+        $("status").textContent = `${stocks.length} stocks restored from this browser`; 
+        render(); 
+      }
+    } catch (_) {}
+  }
+
+  function sortList(list, sortKey) {
+    return list.sort((a, b) => {
+      let valA, valB;
+      if (sortKey === "symbol") { valA = a.symbol; valB = b.symbol; return valA.localeCompare(valB) * sortDirection; }
+      if (sortKey === "name") { valA = a.name; valB = b.name; return valA.localeCompare(valB) * sortDirection; }
+      if (sortKey === "industry") { valA = a.industry; valB = b.industry; return valA.localeCompare(valB) * sortDirection; }
+      if (sortKey === "marketCap") { valA = a.marketCap || 0; valB = b.marketCap || 0; }
+      else if (sortKey === "return1m") { valA = a.return1m ?? -Infinity; valB = b.return1m ?? -Infinity; }
+      else if (sortKey === "return3m") { valA = a.return3m ?? -Infinity; valB = b.return3m ?? -Infinity; }
+      else if (sortKey === "return6m") { valA = a.return6m ?? -Infinity; valB = b.return6m ?? -Infinity; }
+      else if (sortKey === "return1y") { valA = a.return1y ?? -Infinity; valB = b.return1y ?? -Infinity; }
+      else if (sortKey === "return2y") { valA = a.return2y ?? -Infinity; valB = b.return2y ?? -Infinity; }
+      else if (sortKey === "return3y") { valA = a.return3y ?? -Infinity; valB = b.return3y ?? -Infinity; }
+      else { valA = a.rs; valB = b.rs; }
+
+      return (valB - valA) * (sortDirection === 1 ? -1 : 1);
+    });
+  }
+
+  function render() {
+    const query = $("search").value.toLowerCase().trim();
+    const isGrouped = $("groupByIndustry").checked;
+    
+    const minRSCheckbox = $("minRS80");
+    const emaCheckbox = $("priceAbove200EMA");
+    const toggleBtn = $("toggleGroups");
+
+    if (isGrouped) {
+      minRSCheckbox.checked = true;
+      minRSCheckbox.disabled = true;
+      toggleBtn.style.display = "inline-block";
+    } else {
+      minRSCheckbox.disabled = false;
+      toggleBtn.style.display = "none";
+    }
+
+    const filterMinRS = minRSCheckbox.checked;
+    const filterEMA = emaCheckbox.checked;
+
+    let filtered = stocks.filter(s => {
+      const matchesSearch = `${s.symbol} ${s.name} ${s.industry}`.toLowerCase().includes(query);
+      const matchesRS = !filterMinRS || s.rs >= 80;
+      const matchesEMA = !filterEMA || (s.closePrice !== null && s.ema200 !== null && s.closePrice > s.ema200);
+      return matchesSearch && matchesRS && matchesEMA;
+    });
+
+    currentDisplayedStocks = filtered;
+
+    if (!filtered.length) {
+      $("rows").innerHTML = '<tr><td colspan="11" class="empty">No matching stocks found.</td></tr>';
+      $("status").textContent = `0 shown / ${stocks.length} total stocks · saved in this browser`;
+      return;
+    }
+
+    if (!isGrouped) {
+      sortList(filtered, currentSortKey);
+      $("rows").innerHTML = filtered.map(s => `
+        <tr>
+          <td>${escapeHTML(s.symbol)}</td>
+          <td>${escapeHTML(s.name)}</td>
+          <td>${escapeHTML(s.industry)}</td>
+          <td class="num">${s.marketCap !== null ? s.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+          <td class="num rating">${s.rs}</td>
+          <td class="num">${s.return1m !== null ? s.return1m.toFixed(2) : '-'}</td>
+          <td class="num">${s.return3m !== null ? s.return3m.toFixed(2) : '-'}</td>
+          <td class="num">${s.return6m !== null ? s.return6m.toFixed(2) : '-'}</td>
+          <td class="num">${s.return1y !== null ? s.return1y.toFixed(2) : '-'}</td>
+          <td class="num">${s.return2y !== null ? s.return2y.toFixed(2) : '-'}</td>
+          <td class="num">${s.return3y !== null ? s.return3y.toFixed(2) : '-'}</td>
+        </tr>`).join("");
+    } else {
+      const groupsMap = {};
+      filtered.forEach(s => {
+        if (!groupsMap[s.industry]) groupsMap[s.industry] = [];
+        groupsMap[s.industry].push(s);
+      });
+
+      const groups = Object.entries(groupsMap).map(([industry, items]) => {
+        sortList(items, currentSortKey);
+        const avgReturn1m = items.filter(s => s.return1m !== null).reduce((acc, curr, _, arr) => acc + curr.return1m / arr.length, 0);
+        const avgReturn3m = items.filter(s => s.return3m !== null).reduce((acc, curr, _, arr) => acc + curr.return3m / arr.length, 0);
+        const avgReturn6m = items.filter(s => s.return6m !== null).reduce((acc, curr, _, arr) => acc + curr.return6m / arr.length, 0);
+        const avgReturn1y = items.filter(s => s.return1y !== null).reduce((acc, curr, _, arr) => acc + curr.return1y / arr.length, 0);
+        const avgReturn2y = items.filter(s => s.return2y !== null).reduce((acc, curr, _, arr) => acc + curr.return2y / arr.length, 0);
+        const avgReturn3y = items.filter(s => s.return3y !== null).reduce((acc, curr, _, arr) => acc + curr.return3y / arr.length, 0);
+        
+        const avgRS = Math.round(items.reduce((acc, curr) => acc + curr.rs, 0) / items.length);
+        const totalMarketCap = items.reduce((acc, curr) => acc + (curr.marketCap || 0), 0);
+        const count80Plus = items.filter(s => s.rs >= 80).length;
+
+        return { 
+          industry, 
+          items, 
+          return1m: items.some(s => s.return1m !== null) ? avgReturn1m : null, 
+          return3m: items.some(s => s.return3m !== null) ? avgReturn3m : null, 
+          return6m: items.some(s => s.return6m !== null) ? avgReturn6m : null, 
+          return1y: items.some(s => s.return1y !== null) ? avgReturn1y : null, 
+          return2y: items.some(s => s.return2y !== null) ? avgReturn2y : null, 
+          return3y: items.some(s => s.return3y !== null) ? avgReturn3y : null, 
+          rs: avgRS, 
+          marketCap: totalMarketCap, 
+          count80Plus, 
+          name: industry 
+        };
+      });
+
+      groups.sort((a, b) => {
+        if (b.count80Plus !== a.count80Plus) { return b.count80Plus - a.count80Plus; }
+        return b.rs - a.rs;
+      });
+
+      currentGroupNames = groups.map(g => g.industry);
+      const allExpanded = currentGroupNames.length > 0 && currentGroupNames.every(name => expandedGroups.has(name));
+      toggleBtn.textContent = allExpanded ? "Collapse All" : "Expand All";
+
+      let html = "";
+      groups.forEach(group => {
+        const isExpanded = expandedGroups.has(group.industry);
+        const icon = isExpanded ? "▼" : "►";
+
+        html += `
+          <tr class="group-header" data-industry="${escapeHTML(group.industry)}">
+            <td colspan="3">
+              <span class="toggle-icon">${icon}</span>
+              <strong>${escapeHTML(group.industry)}</strong>
+              <span class="badge">${group.items.length} ${group.items.length === 1 ? 'stock' : 'stocks'}</span>
+            </td>
+            <td class="num"><strong>${group.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</strong> <span class="avg-tag">(total)</span></td>
+            <td class="num rating"><strong>${group.rs}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return1m !== null ? group.return1m.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return3m !== null ? group.return3m.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return6m !== null ? group.return6m.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return1y !== null ? group.return1y.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return2y !== null ? group.return2y.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+            <td class="num"><strong>${group.return3y !== null ? group.return3y.toFixed(2) : '-'}</strong> <span class="avg-tag">(avg)</span></td>
+          </tr>
+        `;
+
+        if (isExpanded) {
+          group.items.forEach(s => {
+            html += `
+              <tr class="group-row">
+                <td>${escapeHTML(s.symbol)}</td>
+                <td>${escapeHTML(s.name)}</td>
+                <td>${escapeHTML(s.industry)}</td>
+                <td class="num">${s.marketCap !== null ? s.marketCap.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '-'}</td>
+                <td class="num rating">${s.rs}</td>
+                <td class="num">${s.return1m !== null ? s.return1m.toFixed(2) : '-'}</td>
+                <td class="num">${s.return3m !== null ? s.return3m.toFixed(2) : '-'}</td>
+                <td class="num">${s.return6m !== null ? s.return6m.toFixed(2) : '-'}</td>
+                <td class="num">${s.return1y !== null ? s.return1y.toFixed(2) : '-'}</td>
+                <td class="num">${s.return2y !== null ? s.return2y.toFixed(2) : '-'}</td>
+                <td class="num">${s.return3y !== null ? s.return3y.toFixed(2) : '-'}</td>
+              </tr>
+            `;
+          });
+        }
+      });
+      $("rows").innerHTML = html;
+    }
+    $("status").textContent = `${filtered.length} shown / ${stocks.length} total stocks · saved in this browser`;
+  }
+
+  function escapeHTML(value) {
+    return String(value).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  $("file").addEventListener("change", async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const rows = parseCSV(await file.text());
+      stocks = normalize(rows);
+      if (!stocks.length) throw new Error("No rows with a valid symbol were found.");
+      save(); render();
+    } catch (error) {
+      $("status").textContent = `Import failed: ${error.message}`;
+    }
+    event.target.value = "";
+  });
+
+  $("rsPeriod").addEventListener("change", () => {
+    if (!stocks.length) return;
+    calculateRS(stocks, $("rsPeriod").value);
+    currentSortKey = "rs";
+    sortDirection = -1; 
+    save(); 
+    render();
+  });
+
+  $("search").addEventListener("input", render);
+  $("groupByIndustry").addEventListener("change", render);
+  $("minRS80").addEventListener("change", render);
+  $("priceAbove200EMA").addEventListener("change", render);
+
+  $("toggleGroups").addEventListener("click", () => {
+    const allExpanded = currentGroupNames.length > 0 && currentGroupNames.every(name => expandedGroups.has(name));
+    if (allExpanded) { expandedGroups.clear(); } else { currentGroupNames.forEach(name => expandedGroups.add(name)); }
+    render();
+  });
+
+  $("copySymbols").addEventListener("click", async (e) => {
+    if (!currentDisplayedStocks.length) return;
+    const symbols = currentDisplayedStocks.map(s => s.symbol).join(",");
+    try {
+      await navigator.clipboard.writeText(symbols);
+      const btn = e.target;
+      const originalText = btn.textContent;
+      btn.textContent = "Copied!";
+      setTimeout(() => btn.textContent = originalText, 2000);
+    } catch (err) {
+      alert("Failed to copy symbols.");
+    }
+  });
+
+  $("rows").addEventListener("click", e => {
+    const header = e.target.closest("tr.group-header");
+    if (header) {
+      const industry = header.dataset.industry;
+      if (expandedGroups.has(industry)) { expandedGroups.delete(industry); } else { expandedGroups.add(industry); }
+      render();
+    }
+  });
+
+  document.querySelectorAll("th[data-key]").forEach(th => th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (currentSortKey === key) { sortDirection *= -1; } else { currentSortKey = key; sortDirection = -1; }
+    render();
+  }));
+
+  $("clear").addEventListener("click", () => {
+    if (!confirm("Remove the saved stock list from this browser?")) return;
+    localStorage.removeItem(STORAGE_KEY); stocks = []; currentDisplayedStocks = []; expandedGroups.clear(); render();
+    $("status").textContent = "Saved data cleared. Import a CSV to start again.";
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
